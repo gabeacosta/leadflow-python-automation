@@ -121,14 +121,18 @@ def push(db, client, portal_id, allowed_portals):
     db.execute(SYNC_SCHEMA)
     created = []
     for prop in PROPERTIES:
-        status, _ = client.request('GET', f"/crm/v3/properties/contacts/{prop['name']}")
+        status, body = client.request('GET', f"/crm/v3/properties/contacts/{prop['name']}")
         if status == 404:
             status, body = client.request('POST', '/crm/v3/properties/contacts', prop)
             if status not in (200, 201):
-                raise SyncRefused(f"creating property {prop['name']} failed (HTTP {status}): {body.get('message')}")
+                hint = ' - token needs crm.schemas.contacts.write' if status in (401, 403) else ''
+                raise SyncRefused(f"creating property {prop['name']} failed (HTTP {status}): {body.get('message')}{hint}")
             created.append(prop['name'])
         elif status != 200:
-            raise SyncRefused(f"checking property {prop['name']} failed (HTTP {status})")
+            hint = (' - the token is missing scopes; it needs crm.schemas.contacts.read and '
+                    'crm.schemas.contacts.write (plus crm.objects.contacts.read/write)') if status in (401, 403) else ''
+            raise SyncRefused(f"checking property {prop['name']} failed (HTTP {status}): "
+                              f"{body.get('message', '')}{hint}")
 
     plan_ = plan(db)
     synced, unchanged, errors = 0, 0, []

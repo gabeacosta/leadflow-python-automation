@@ -121,3 +121,16 @@ def test_unconfirmed_results_are_not_recorded_as_synced(db):
     r = hs.push(db, Partial(), '244742237', ['244742237'])
     assert r['synced'] == 0 and r['errors'] == ['INVALID_EMAIL']
     assert db.execute('select count(*) from hubspot_sync').fetchone()[0] == 0
+
+
+def test_missing_schema_scope_gives_actionable_error(db):
+    class NoSchema(FakeHubSpot):
+        def request(self, method, path, body=None):
+            if path.startswith('/crm/v3/properties/'):
+                self.calls.append((method, path, body))
+                return 403, {'message': 'This app hasn\'t been granted all required scopes'}
+            return super().request(method, path, body)
+    fake = NoSchema()
+    with pytest.raises(hs.SyncRefused, match='crm.schemas.contacts.read'):
+        hs.push(db, fake, '244742237', ['244742237'])
+    assert not any(c[1].endswith('batch/upsert') for c in fake.calls)
