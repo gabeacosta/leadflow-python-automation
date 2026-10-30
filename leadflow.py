@@ -135,6 +135,11 @@ def main():
     a = sub.add_parser('approve'); a.add_argument('lead_id')
     e = sub.add_parser('export'); e.add_argument('csv_file')
     sub.add_parser('list')
+    h = sub.add_parser('hubspot', help='sync APPROVED leads to HubSpot (dry run unless --live)')
+    h.add_argument('action', choices=['plan', 'push'])
+    h.add_argument('--out', default=None, help='plan: write the dry-run payload to this JSON file')
+    h.add_argument('--live', action='store_true', help='push: actually write to HubSpot')
+    h.add_argument('--portal', default=None, help='push: HubSpot portal ID (must be in HUBSPOT_ALLOWED_PORTALS)')
     args = parser.parse_args()
     db = connect(args.db)
     if args.command == 'submit':
@@ -147,6 +152,26 @@ def main():
         approve(db,args.lead_id); print('Approved for human follow-up. No message sent.')
     elif args.command == 'export':
         export(db,args.csv_file); print('Exported',args.csv_file)
+    elif args.command == 'hubspot':
+        import os
+        import hubspot_sync as hs
+        if args.action == 'plan' or not args.live:
+            result = hs.plan(db)
+            if args.action == 'push':
+                result['note'] = 'push without --live is a dry run; nothing was sent'
+            text = json.dumps(result, indent=2)
+            if args.out:
+                Path(args.out).write_text(text); print(f"Dry run written to {args.out}:", json.dumps(result['summary']))
+            else:
+                print(text)
+        else:
+            token = os.environ.get('HUBSPOT_TOKEN')
+            if not token or not args.portal:
+                raise SystemExit('Live push needs HUBSPOT_TOKEN in the environment and --portal ID')
+            try:
+                print(json.dumps(hs.push(db, hs.HubSpotClient(token), args.portal, hs.allowed_from_env()), indent=2))
+            except hs.SyncRefused as exc:
+                raise SystemExit(f'Refused, nothing written: {exc}')
     elif args.command == 'list':
         for *row, reasons in db.execute('SELECT id,email,tier,score,status,review_reasons FROM leads'):
             flags = json.loads(reasons or '[]')

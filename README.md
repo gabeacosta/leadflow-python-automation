@@ -145,18 +145,43 @@ The tests cover scoring, missing details, invalid email and negative budget reje
 
 ## Possible extensions (not implemented)
 
-1. Connect an authorized form and CRM through authenticated APIs or validated webhooks (a HubSpot dry-run mapping is the next planned step).
+1. Connect an authorized web form through a validated webhook (HubSpot sync is implemented above, dry run by default).
 2. Add source/event idempotency, retries, and failure handling.
 3. Add access controls, stricter validation, monitoring, and data retention policies.
 4. Verify the complete workflow with authorized sample data before production use.
 
 ## Boundaries
 
-This demo does not connect to HubSpot, Zapier, Claude, OpenAI, or a real email provider. The optional `--ai` step uses only a model running locally under Ollama. There is no real-world lead volume, production uptime, security audit, or client case study to claim. No messages are sent automatically.
+This demo does not connect to Zapier, Claude, OpenAI, or a real email provider, and connects to HubSpot only in opt-in live mode for allow-listed test portals. The optional `--ai` step uses only a model running locally under Ollama. There is no real-world lead volume, production uptime, security audit, or client case study to claim. No messages are sent automatically.
 
 ## License
 
 [MIT](LICENSE).
+
+## HubSpot sync (dry run by default)
+
+```bash
+python3 leadflow.py --db demo.sqlite3 hubspot plan --out hubspot_plan.json   # no network, shows exactly what would be sent
+```
+
+The plan lists the custom properties LeadFlow would create and the batched upsert payloads (`POST /crm/v3/objects/contacts/batch/upsert`, matched by email, 100 per batch).
+
+Rules (see `hubspot_sync.py`):
+- **Only leads a human approved are synced.** Pending leads never leave the machine.
+- **Only LeadFlow's own fields** (`leadflow_*`) plus email and company are written. `lifecyclestage`, `hs_lead_status` and `hubspotscore` are never touched, so a sync can't move a contact backwards or overwrite HubSpot's own scoring. A blank company is not sent, so it can't erase an existing value.
+- **AI answers sync only when trusted.** `DISTRUSTED` or invalid AI output stays local.
+- **Data minimisation.** Requirements text and draft emails are not sent.
+- **Idempotent.** Re-running skips unchanged records; only contacts HubSpot confirms are recorded as synced.
+
+Live mode is opt-in and fenced for **test portals**:
+
+```bash
+export HUBSPOT_TOKEN=...                 # private-app token from a HubSpot test account
+export HUBSPOT_ALLOWED_PORTALS=12345678  # comma-separated allow-list
+python3 leadflow.py --db demo.sqlite3 hubspot push --live --portal 12345678
+```
+
+It refuses before any write if the portal isn't allow-listed or the token belongs to a different portal. Token scopes needed: contacts read/write and contact schema read/write. `push` without `--live` is a dry run.
 
 ## Evaluate the AI step
 
