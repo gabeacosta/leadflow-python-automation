@@ -2,7 +2,7 @@
 
 LeadFlow turns JSON enquiries into scored lead records, follow-up drafts, and CSV summaries for human review. It runs locally with Python and SQLite using the standard library.
 
-**Status:** functional portfolio demonstration with fictional sample data. No AI model, live CRM, email provider, or deployed service is connected.
+**Status:** functional portfolio demonstration with fictional sample data. An **optional** local-AI second opinion (`--ai`, via Ollama on your own machine) can be switched on; it is advisory only. No cloud AI, live CRM, email provider, or deployed service is connected.
 
 ## Video demo
 
@@ -96,7 +96,7 @@ All bundled contacts and company details are fictional.
 | Complete enquiry: 100 / HIGH | [Lead](examples/lead_high.json) | [Output](examples/lead_high_output.json) |
 | Missing company and budget: 15 / LOW | [Lead](examples/lead_missing_details.json) | [Output](examples/lead_missing_details_output.json) |
 
-[Example CSV](examples/demo_export.csv) shows both records before approval. The CSV contains `id`, `email`, `company`, `budget`, `score`, `tier`, `status`, `missing`, and `reasons`. Requirements and follow-up draft text are stored in SQLite but omitted from the CSV.
+[Example CSV](examples/demo_export.csv) shows both records before approval. The CSV contains `id`, `email`, `company`, `budget`, `score`, `tier`, `status`, `missing`, `reasons`, plus `ai_fit`, `ai_confidence`, and `review_reasons` (empty unless `--ai` was used). Requirements and follow-up draft text are stored in SQLite but omitted from the CSV.
 
 ## Duplicate submissions and demo limits
 
@@ -104,6 +104,27 @@ All bundled contacts and company details are fictional.
 - A duplicate submission returns `created: false` with qualification details calculated from the new input. Those details can differ from the saved record; `list` and `export` use the original stored values.
 - Input validation is basic, not a complete JSON schema. Unexpected field types and non-finite budgets are not fully guarded, and malformed input may produce a Python traceback.
 - Approval is a status flag for human follow-up. There is no authentication, automated delivery, or downstream processing triggered by approval.
+
+## Optional: local AI second opinion (`--ai`)
+
+Requires [Ollama](https://ollama.com) running locally and a pulled model (default `qwen3`; override with `--model` or `LEADFLOW_MODEL`). Nothing leaves your machine.
+
+```bash
+ollama pull qwen3
+python3 leadflow.py --db demo.sqlite3 submit --ai examples/lead_high.json
+python3 leadflow.py --db demo.sqlite3 submit --ai examples/lead_prompt_injection.json
+python3 leadflow.py --db demo.sqlite3 list
+```
+
+How it is kept safe (see `ai_assist.py`):
+
+- **Rules stay the system of record.** The AI's intent, fit, and confidence are stored next to the rule score. The AI can only *add* review reasons; it never changes the score or tier, never drops a lead, and never sends anything.
+- **Schema-constrained and re-validated.** The model must answer in a fixed JSON schema, and the answer is validated again in Python (allowed values, ranges, lengths, no extra fields). Anything invalid is ignored and flagged.
+- **Fallback to humans.** Model offline, timeout, invalid output, or confidence below 0.7 marks the lead for review with the reason shown in `list` and the CSV.
+- **Untrusted text is treated as data.** Lead text is passed inside delimiters the sender cannot close, and the contact email is not sent to the model. `examples/lead_prompt_injection.json` is an enquiry that tries to instruct the AI; the rules score it 35 / MEDIUM on length alone (the injected budget claim is ignored), and any AI "agreement" with the injected instructions shows up as a disagreement or red flag for a human to see.
+- **Flags, not filters.** Spam, vendor pitches, and job seekers are flagged for review, not deleted.
+
+The rule-based score never depends on the model, so results remain reproducible with or without `--ai`.
 
 ## Run tests
 
@@ -118,19 +139,18 @@ python -m pytest -q
 
 On Windows, activate the environment with `.\.venv\Scripts\Activate.ps1` in PowerShell. Use your installed Python 3.10+ command to create it.
 
-The tests cover scoring, missing details, invalid email and negative budget rejection, duplicate storage, approval state, and CSV export. They use temporary databases.
+The tests cover scoring, missing details, invalid email and negative budget rejection, duplicate storage, approval state, and CSV export, plus the AI path with a fake model: agreement, low confidence, rule/AI disagreement, spam flagging, eight kinds of invalid model output, model unavailable, delimiter escape attempts, no repeat model calls on duplicates, and migration of older databases. They use temporary databases and never call a real model.
 
 ## Possible extensions (not implemented)
 
-1. Add structured LLM output with schema validation and a manual-review fallback.
-2. Connect an authorized form and CRM through authenticated APIs or validated webhooks.
-3. Add source/event idempotency, retries, and failure handling.
-4. Add access controls, stricter validation, monitoring, and data retention policies.
-5. Verify the complete workflow with authorized sample data before production use.
+1. Connect an authorized form and CRM through authenticated APIs or validated webhooks (a HubSpot dry-run mapping is the next planned step).
+2. Add source/event idempotency, retries, and failure handling.
+3. Add access controls, stricter validation, monitoring, and data retention policies.
+4. Verify the complete workflow with authorized sample data before production use.
 
 ## Boundaries
 
-This demo does not connect to HubSpot, Zapier, Claude, OpenAI, or a real email provider. There is no real-world lead volume, production uptime, security audit, or client case study to claim. No messages are sent automatically.
+This demo does not connect to HubSpot, Zapier, Claude, OpenAI, or a real email provider. The optional `--ai` step uses only a model running locally under Ollama. There is no real-world lead volume, production uptime, security audit, or client case study to claim. No messages are sent automatically.
 
 ## License
 

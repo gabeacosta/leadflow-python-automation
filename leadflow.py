@@ -1,4 +1,4 @@
-"""Demo lead triage: deterministic, review-first, no external APIs required."""
+"""Demo lead triage: deterministic, review-first. Optional local-AI second opinion (--ai)."""
 import argparse
 import csv
 import hashlib
@@ -14,6 +14,11 @@ SCHEMA = '''CREATE TABLE IF NOT EXISTS leads (
  tier TEXT NOT NULL, reasons TEXT NOT NULL, missing TEXT NOT NULL,
  draft TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
  created_at TEXT NOT NULL);'''
+
+# Added for the optional AI second opinion. Existing databases are migrated in connect().
+AI_COLUMNS = {'ai_status': 'TEXT', 'ai_intent': 'TEXT', 'ai_fit': 'TEXT', 'ai_confidence': 'REAL',
+              'ai_summary': 'TEXT', 'ai_flags': "TEXT NOT NULL DEFAULT '[]'",
+              'review_reasons': "TEXT NOT NULL DEFAULT '[]'"}
 
 
 def normalize_email(email):
@@ -62,22 +67,44 @@ def qualify(lead):
 def connect(db_path):
     db = sqlite3.connect(db_path)
     db.execute(SCHEMA)
+    have = {row[1] for row in db.execute('PRAGMA table_info(leads)')}
+    for name, decl in AI_COLUMNS.items():
+        if name not in have:
+            db.execute(f'ALTER TABLE leads ADD COLUMN {name} {decl}')
+    db.commit()
     return db
 
 
-def submit(db, lead):
+def submit(db, lead, ai_client=None):
+    """Score with rules; if ai_client is given, attach an advisory AI assessment.
+
+    The AI never changes score/tier and never removes a lead; it can only add review reasons.
+    """
     result = qualify(lead)
     key = hashlib.sha256(result['email'].encode()).hexdigest()[:16]
+    existing = db.execute('SELECT id FROM leads WHERE id=?', (key,)).fetchone()
+    if existing: return {'id': key, 'created': False, **result}
+    ai = None
+    if ai_client is not None:
+        from ai_assist import assess
+        ai = assess(lead, result['tier'], ai_client)
+        result['ai'] = ai
     with db:
-        existing = db.execute('SELECT id FROM leads WHERE id=?', (key,)).fetchone()
-        if existing: return {'id': key, 'created': False, **result}
-        db.execute('''INSERT INTO leads
+        cur = db.execute('''INSERT OR IGNORE INTO leads
           (id,email,company,requirements,budget,score,tier,reasons,missing,draft,status,created_at)
           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)''',
           (key, result['email'], result['company'], result['requirements'],result['budget'],
            result['score'],result['tier'],json.dumps(result['reasons']),
            json.dumps(result['missing']),result['draft'],'PENDING_REVIEW',
            datetime.now(timezone.utc).isoformat()))
+        if cur.rowcount == 0:  # lost a race with a concurrent submit of the same email
+            result.pop('ai', None)
+            return {'id': key, 'created': False, **result}
+        if ai is not None:
+            db.execute('''UPDATE leads SET ai_status=?, ai_intent=?, ai_fit=?, ai_confidence=?,
+              ai_summary=?, ai_flags=?, review_reasons=? WHERE id=?''',
+              (ai['ai_status'], ai['ai_intent'], ai['ai_fit'], ai['ai_confidence'], ai['ai_summary'],
+               json.dumps(ai['ai_flags']), json.dumps(ai['review_reasons']), key))
     return {'id': key, 'created': True, **result}
 
 
@@ -90,8 +117,10 @@ def approve(db, lead_id):
 def export(db, output):
     with open(output, 'w', newline='', encoding='utf-8') as handle:
         writer = csv.writer(handle)
-        writer.writerow(['id','email','company','budget','score','tier','status','missing','reasons'])
-        writer.writerows(db.execute('SELECT id,email,company,budget,score,tier,status,missing,reasons FROM leads ORDER BY created_at'))
+        writer.writerow(['id','email','company','budget','score','tier','status','missing','reasons',
+                         'ai_fit','ai_confidence','review_reasons'])
+        writer.writerows(db.execute('SELECT id,email,company,budget,score,tier,status,missing,reasons,'
+                                    'ai_fit,ai_confidence,review_reasons FROM leads ORDER BY created_at'))
 
 
 def main():
@@ -99,19 +128,27 @@ def main():
     parser.add_argument('--db', default='leadflow.sqlite3')
     sub = parser.add_subparsers(dest='command', required=True)
     s = sub.add_parser('submit'); s.add_argument('json_file')
+    s.add_argument('--ai', action='store_true', help='add an advisory second opinion from a local Ollama model')
+    s.add_argument('--model', default=None, help='Ollama model name (default: $LEADFLOW_MODEL or qwen3)')
+    s.add_argument('--ollama-url', default=None, help='default: $LEADFLOW_OLLAMA_URL or http://localhost:11434')
     a = sub.add_parser('approve'); a.add_argument('lead_id')
     e = sub.add_parser('export'); e.add_argument('csv_file')
     sub.add_parser('list')
     args = parser.parse_args()
     db = connect(args.db)
     if args.command == 'submit':
-        print(json.dumps(submit(db,json.loads(Path(args.json_file).read_text())),indent=2))
+        client = None
+        if args.ai:
+            from ai_assist import OllamaClient
+            client = OllamaClient(model=args.model, url=args.ollama_url)
+        print(json.dumps(submit(db,json.loads(Path(args.json_file).read_text()),ai_client=client),indent=2))
     elif args.command == 'approve':
         approve(db,args.lead_id); print('Approved for human follow-up. No message sent.')
     elif args.command == 'export':
         export(db,args.csv_file); print('Exported',args.csv_file)
     elif args.command == 'list':
-        for row in db.execute('SELECT id,email,tier,score,status FROM leads'):
-            print(*row,sep=' | ')
+        for *row, reasons in db.execute('SELECT id,email,tier,score,status,review_reasons FROM leads'):
+            flags = json.loads(reasons or '[]')
+            print(*row, *(['REVIEW: ' + '; '.join(flags)] if flags else []), sep=' | ')
 
 if __name__ == '__main__': main()
