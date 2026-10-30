@@ -21,6 +21,22 @@ AI_COLUMNS = {'ai_status': 'TEXT', 'ai_intent': 'TEXT', 'ai_fit': 'TEXT', 'ai_co
               'review_reasons': "TEXT NOT NULL DEFAULT '[]'"}
 
 
+def load_dotenv(path=None):
+    """Load KEY=VALUE lines from .env next to this file. Shell variables win; nothing is printed."""
+    import os
+    path = Path(path) if path else Path(__file__).resolve().parent / '.env'
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
+
+
 def normalize_email(email):
     value = str(email or '').strip().lower()
     if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', value):
@@ -141,6 +157,7 @@ def main():
     h.add_argument('--live', action='store_true', help='push: actually write to HubSpot')
     h.add_argument('--portal', default=None, help='push: HubSpot portal ID (must be in HUBSPOT_ALLOWED_PORTALS)')
     args = parser.parse_args()
+    load_dotenv()
     db = connect(args.db)
     if args.command == 'submit':
         client = None

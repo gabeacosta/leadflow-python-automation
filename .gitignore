@@ -10,3 +10,4 @@ venv/
 results.csv
 .DS_Store
 hubspot_plan.json
+!.env.example

@@ -3,7 +3,7 @@ import sqlite3
 import sys
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from leadflow import qualify, submit, connect, approve, export
+from leadflow import qualify, submit, connect, approve, export, load_dotenv
 import pytest
 
 LEAD = {'name':'Jordan','email':'Jordan@Example.com','company':'Example Co',
@@ -34,3 +34,15 @@ def test_duplicate_and_approval(tmp_path):
     with pytest.raises(ValueError): approve(db,first['id'])
     export(db,tmp_path/'out.csv')
     assert 'APPROVED' in (tmp_path/'out.csv').read_text()
+
+
+def test_load_dotenv_does_not_override_shell_and_skips_blanks(tmp_path, monkeypatch):
+    env = tmp_path / '.env'
+    env.write_text("# comment\nLF_A='from-file'\nLF_B=from-file\nLF_EMPTY=\n")
+    monkeypatch.setenv('LF_B', 'from-shell')
+    monkeypatch.delenv('LF_A', raising=False); monkeypatch.delenv('LF_EMPTY', raising=False)
+    load_dotenv(env)
+    import os
+    assert os.environ['LF_A'] == 'from-file'
+    assert os.environ['LF_B'] == 'from-shell'
+    assert 'LF_EMPTY' not in os.environ

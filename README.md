@@ -176,12 +176,11 @@ Rules (see `hubspot_sync.py`):
 Live mode is opt-in and fenced for **test portals**:
 
 ```bash
-export HUBSPOT_TOKEN=...                 # private-app token from a HubSpot test account
-export HUBSPOT_ALLOWED_PORTALS=12345678  # comma-separated allow-list
+cp .env.example .env    # git-ignored; put HUBSPOT_TOKEN and HUBSPOT_ALLOWED_PORTALS here
 python3 leadflow.py --db demo.sqlite3 hubspot push --live --portal 12345678
 ```
 
-It refuses before any write if the portal isn't allow-listed or the token belongs to a different portal. Token scopes needed: contacts read/write and contact schema read/write. `push` without `--live` is a dry run.
+Settings load from `.env` automatically (shell variables take precedence), so tokens never need to be typed on the command line. It refuses before any write if the portal isn't allow-listed or the token belongs to a different portal. Token scopes needed: contacts read/write and contact schema read/write. `push` without `--live` is a dry run.
 
 ## Evaluate the AI step
 
