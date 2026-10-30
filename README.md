@@ -4,9 +4,22 @@ LeadFlow turns JSON enquiries into scored lead records, follow-up drafts, and CS
 
 **Status:** functional portfolio demonstration with fictional sample data. No AI model, live CRM, email provider, or deployed service is connected.
 
+## Video demo
+
+[![Watch the 30-second LeadFlow walkthrough showing real lead scores, human approval, and CSV export](docs/images/leadflow-demo-preview.png)](docs/videos/leadflow-demo.mp4)
+
+[Watch or download the 30-second walkthrough (MP4)](docs/videos/leadflow-demo.mp4).
+
+The silent video follows submit → approve → export using real command output and fictional sample leads. Captured output is formatted for readability; selected JSON fields and CSV columns are labelled. [Full command transcript](docs/videos/leadflow-demo-transcript.txt).
+
 ## Portfolio preview
 
+<details>
+<summary>Portfolio overview (page 1)</summary>
+
 ![LeadFlow portfolio overview showing the local workflow, implemented capabilities, and demo status](docs/images/leadflow-portfolio-page-1.png)
+
+</details>
 
 The images are portfolio overview pages. Approval records a review status; it does not gate CSV export or send a message.
 

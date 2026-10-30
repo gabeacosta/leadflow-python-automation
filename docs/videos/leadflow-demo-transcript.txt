@@ -1,0 +1,53 @@
+$ python3 leadflow.py --db demo.sqlite3 submit examples/lead_high.json
+{
+  "id": "8cfbbd129c8030c0",
+  "created": true,
+  "email": "jordan@example.com",
+  "company": "Example Co",
+  "requirements": "We need a CRM lead scoring workflow integrated with our website this week.",
+  "budget": 6500.0,
+  "score": 100,
+  "tier": "HIGH",
+  "reasons": [
+    "Company supplied (+15)",
+    "Detailed requirements (+35)",
+    "Budget at least $5,000 (+40)",
+    "Urgency stated (+10)"
+  ],
+  "missing": [],
+  "draft": "Hi Jordan,\n\nThanks for reaching out about your project. We received your inquiry and will review the details with our team.\n\nBest,\nTeam"
+}
+
+$ python3 leadflow.py --db demo.sqlite3 submit examples/lead_missing_details.json
+{
+  "id": "22e7ba7a5786d8fb",
+  "created": true,
+  "email": "sam@example.org",
+  "company": "",
+  "requirements": "Need help with automation",
+  "budget": null,
+  "score": 15,
+  "tier": "LOW",
+  "reasons": [
+    "Partial requirements (+15)"
+  ],
+  "missing": [
+    "company",
+    "budget"
+  ],
+  "draft": "Hi Sam,\n\nThanks for reaching out about your project. We received your inquiry and will review the details with our team. Could you also share company, budget?\n\nBest,\nTeam"
+}
+
+$ python3 leadflow.py --db demo.sqlite3 list
+8cfbbd129c8030c0 | jordan@example.com | HIGH | 100 | PENDING_REVIEW
+22e7ba7a5786d8fb | sam@example.org | LOW | 15 | PENDING_REVIEW
+
+$ python3 leadflow.py --db demo.sqlite3 approve 8cfbbd129c8030c0
+Approved for human follow-up. No message sent.
+
+$ python3 leadflow.py --db demo.sqlite3 list
+8cfbbd129c8030c0 | jordan@example.com | HIGH | 100 | APPROVED
+22e7ba7a5786d8fb | sam@example.org | LOW | 15 | PENDING_REVIEW
+
+$ python3 leadflow.py --db demo.sqlite3 export results.csv
+Exported results.csv
