@@ -1,0 +1,18 @@
+{
+  "id": "22e7ba7a5786d8fb",
+  "created": true,
+  "email": "sam@example.org",
+  "company": "",
+  "requirements": "Need help with automation",
+  "budget": null,
+  "score": 15,
+  "tier": "LOW",
+  "reasons": [
+    "Partial requirements (+15)"
+  ],
+  "missing": [
+    "company",
+    "budget"
+  ],
+  "draft": "Hi Sam,\n\nThanks for reaching out about your project. We received your inquiry and will review the details with our team. Could you also share company, budget?\n\nBest,\nTeam"
+}

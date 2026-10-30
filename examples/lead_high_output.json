@@ -1,0 +1,18 @@
+{
+  "id": "8cfbbd129c8030c0",
+  "created": true,
+  "email": "jordan@example.com",
+  "company": "Example Co",
+  "requirements": "We need a CRM lead scoring workflow integrated with our website this week.",
+  "budget": 6500.0,
+  "score": 100,
+  "tier": "HIGH",
+  "reasons": [
+    "Company supplied (+15)",
+    "Detailed requirements (+35)",
+    "Budget at least $5,000 (+40)",
+    "Urgency stated (+10)"
+  ],
+  "missing": [],
+  "draft": "Hi Jordan,\n\nThanks for reaching out about your project. We received your inquiry and will review the details with our team.\n\nBest,\nTeam"
+}

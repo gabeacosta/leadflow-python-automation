@@ -1,0 +1,3 @@
+id,email,company,budget,score,tier,status,missing,reasons
+8cfbbd129c8030c0,jordan@example.com,Example Co,6500.0,100,HIGH,PENDING_REVIEW,[],"[""Company supplied (+15)"", ""Detailed requirements (+35)"", ""Budget at least $5,000 (+40)"", ""Urgency stated (+10)""]"
+22e7ba7a5786d8fb,sam@example.org,,,15,LOW,PENDING_REVIEW,"[""company"", ""budget""]","[""Partial requirements (+15)""]"
