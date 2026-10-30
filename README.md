@@ -6,9 +6,11 @@ LeadFlow turns JSON enquiries into scored lead records, follow-up drafts, and CS
 
 ## Video demo
 
-[![Watch the 30-second LeadFlow walkthrough showing real lead scores, human approval, and CSV export](docs/images/leadflow-demo-preview.png)](docs/videos/leadflow-demo.mp4)
+The 30-second walkthrough plays automatically below. No setup or download is needed.
 
-[Watch or download the 30-second walkthrough (MP4)](docs/videos/leadflow-demo.mp4).
+![Animated LeadFlow walkthrough showing real lead scores, human approval, and CSV export](docs/images/leadflow-demo.gif)
+
+[Download the full-resolution MP4](https://raw.githubusercontent.com/gabeacosta/leadflow-python-automation/main/docs/videos/leadflow-demo.mp4).
 
 The silent video follows submit → approve → export using real command output and fictional sample leads. Captured output is formatted for readability; selected JSON fields and CSV columns are labelled. [Full command transcript](docs/videos/leadflow-demo-transcript.txt).
 
