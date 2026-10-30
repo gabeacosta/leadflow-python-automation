@@ -122,6 +122,8 @@ How it is kept safe (see `ai_assist.py`):
 - **Schema-constrained and re-validated.** The model must answer in a fixed JSON schema, and the answer is validated again in Python (allowed values, ranges, lengths, no extra fields). Anything invalid is ignored and flagged.
 - **Fallback to humans.** Model offline, timeout, invalid output, or confidence below 0.7 marks the lead for review with the reason shown in `list` and the CSV. The first call after starting Ollama can take a minute while the model loads; the default wait is 120 s (`--ai-timeout` or `LEADFLOW_AI_TIMEOUT` to change).
 - **Untrusted text is treated as data.** Lead text is passed inside delimiters the sender cannot close, and the contact email is not sent to the model. `examples/lead_prompt_injection.json` is an enquiry that tries to instruct the AI; the rules score it 35 / MEDIUM on length alone (the injected budget claim is ignored), and any AI "agreement" with the injected instructions shows up as a disagreement or red flag for a human to see.
+- **Defense in depth against manipulation.** A plain-code pattern check looks for prompt-injection phrases without relying on the model. If it fires, or the model rates a lead *higher* than the rules while also reporting red flags, the AI answer is marked `DISTRUSTED`: kept for the reviewer, never acted on. In testing, qwen3 flagged the injection example yet still followed its "mark this HIGH" instruction, which is exactly why the model is never allowed to grade its own manipulation. False positives only cost a human review.
+- **Upgrades are flagged.** Any AI rating higher than the rules is called out, because an over-rated lead is the one that gets acted on.
 - **Flags, not filters.** Spam, vendor pitches, and job seekers are flagged for review, not deleted.
 
 The rule-based score never depends on the model, so results remain reproducible with or without `--ai`.
@@ -155,3 +157,7 @@ This demo does not connect to HubSpot, Zapier, Claude, OpenAI, or a real email p
 ## License
 
 [MIT](LICENSE).
+
+## Evaluate the AI step
+
+`python3 eval_ai.py` runs every example through the rules and the local model and prints a comparison table. It writes nothing.
