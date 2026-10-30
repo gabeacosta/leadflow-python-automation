@@ -120,7 +120,7 @@ How it is kept safe (see `ai_assist.py`):
 
 - **Rules stay the system of record.** The AI's intent, fit, and confidence are stored next to the rule score. The AI can only *add* review reasons; it never changes the score or tier, never drops a lead, and never sends anything.
 - **Schema-constrained and re-validated.** The model must answer in a fixed JSON schema, and the answer is validated again in Python (allowed values, ranges, lengths, no extra fields). Anything invalid is ignored and flagged.
-- **Fallback to humans.** Model offline, timeout, invalid output, or confidence below 0.7 marks the lead for review with the reason shown in `list` and the CSV.
+- **Fallback to humans.** Model offline, timeout, invalid output, or confidence below 0.7 marks the lead for review with the reason shown in `list` and the CSV. The first call after starting Ollama can take a minute while the model loads; the default wait is 120 s (`--ai-timeout` or `LEADFLOW_AI_TIMEOUT` to change).
 - **Untrusted text is treated as data.** Lead text is passed inside delimiters the sender cannot close, and the contact email is not sent to the model. `examples/lead_prompt_injection.json` is an enquiry that tries to instruct the AI; the rules score it 35 / MEDIUM on length alone (the injected budget claim is ignored), and any AI "agreement" with the injected instructions shows up as a disagreement or red flag for a human to see.
 - **Flags, not filters.** Spam, vendor pitches, and job seekers are flagged for review, not deleted.
 

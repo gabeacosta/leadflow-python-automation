@@ -131,6 +131,7 @@ def main():
     s.add_argument('--ai', action='store_true', help='add an advisory second opinion from a local Ollama model')
     s.add_argument('--model', default=None, help='Ollama model name (default: $LEADFLOW_MODEL or qwen3)')
     s.add_argument('--ollama-url', default=None, help='default: $LEADFLOW_OLLAMA_URL or http://localhost:11434')
+    s.add_argument('--ai-timeout', type=float, default=None, help='seconds to wait for the model (default 120)')
     a = sub.add_parser('approve'); a.add_argument('lead_id')
     e = sub.add_parser('export'); e.add_argument('csv_file')
     sub.add_parser('list')
@@ -140,7 +141,7 @@ def main():
         client = None
         if args.ai:
             from ai_assist import OllamaClient
-            client = OllamaClient(model=args.model, url=args.ollama_url)
+            client = OllamaClient(model=args.model, url=args.ollama_url, timeout=args.ai_timeout)
         print(json.dumps(submit(db,json.loads(Path(args.json_file).read_text()),ai_client=client),indent=2))
     elif args.command == 'approve':
         approve(db,args.lead_id); print('Approved for human follow-up. No message sent.')

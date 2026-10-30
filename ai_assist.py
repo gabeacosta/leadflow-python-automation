@@ -10,6 +10,7 @@ Design rules:
 """
 import json
 import os
+import socket
 import urllib.error
 import urllib.request
 
@@ -48,10 +49,11 @@ SYSTEM_PROMPT = (
 class OllamaClient:
     """Calls a local Ollama server's /api/chat with a JSON-schema constrained response."""
 
-    def __init__(self, model=None, url=None, timeout=30):
+    def __init__(self, model=None, url=None, timeout=None):
         self.model = model or os.environ.get('LEADFLOW_MODEL', 'qwen3')
         self.url = (url or os.environ.get('LEADFLOW_OLLAMA_URL', 'http://localhost:11434')).rstrip('/')
-        self.timeout = timeout
+        # First call after a model download/restart loads weights into memory and can take a minute+.
+        self.timeout = timeout or float(os.environ.get('LEADFLOW_AI_TIMEOUT', 120))
 
     def complete(self, system, user):
         body = json.dumps({
@@ -96,9 +98,19 @@ def assess(lead, rule_tier, client):
            'ai_summary': None, 'ai_flags': [], 'review_reasons': []}
     try:
         result = validate(client.complete(SYSTEM_PROMPT, _lead_block(lead)))
-    except (urllib.error.URLError, TimeoutError, OSError):
+    except (TimeoutError, socket.timeout) as exc:
         out['ai_status'] = 'UNAVAILABLE'
-        out['review_reasons'].append('AI unavailable: rules-only result')
+        out['review_reasons'].append('AI timed out (model may still be loading): rules-only result')
+        return out
+    except urllib.error.URLError as exc:
+        out['ai_status'] = 'UNAVAILABLE'
+        timed_out = isinstance(getattr(exc, 'reason', None), (TimeoutError, socket.timeout))
+        out['review_reasons'].append('AI timed out (model may still be loading): rules-only result'
+                                     if timed_out else 'AI unavailable (is Ollama running?): rules-only result')
+        return out
+    except OSError:
+        out['ai_status'] = 'UNAVAILABLE'
+        out['review_reasons'].append('AI unavailable (is Ollama running?): rules-only result')
         return out
     except (ValueError, KeyError, TypeError):
         out['ai_status'] = 'INVALID'
