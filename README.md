@@ -2,6 +2,19 @@
 
 **Status:** working local demonstration, not a deployed client implementation. **No AI model or CRM is connected.** This deterministic baseline demonstrates the workflow pattern that an AI-assisted implementation can extend safely.
 
+## Portfolio preview
+
+![LeadFlow portfolio overview showing the local workflow, implemented capabilities, and demo status](docs/images/leadflow-portfolio-page-1.png)
+
+[View the full two-page portfolio (PDF)](docs/LeadFlow_Upwork_Portfolio.pdf)
+
+<details>
+<summary>Engineering notes (page 2)</summary>
+
+![LeadFlow engineering notes showing example output, quality and safety boundaries, and the extension roadmap](docs/images/leadflow-portfolio-page-2.png)
+
+</details>
+
 ## What it demonstrates
 - Validates incoming JSON enquiries; handles unknown budget rather than inventing it.
 - Produces transparent qualification tiers and reasons.
